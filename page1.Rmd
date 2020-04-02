@@ -1,0 +1,62 @@
+---
+output: html_document
+---
+
+## My family
+
+Here is my family and a demo for the [D3](https://d3js.org/) integration with R using [networkD3](https://cran.r-project.org/web/packages/networkR/index.html).  A more general framework can be used for R with the [R2D3](https://rstudio.github.io/r2d3/) package.
+
+```{r}
+library(networkD3)
+
+year <- as.numeric(format(Sys.Date(),'%Y'))
+myfamily<-data.frame(Name = c('Eric',"Kara","Kathleen","Jude","Iris", "Renee",'Brent'), 
+                   Birthday= c("12-12","01-03","09-15","02-02","11-08",'02-02',"07-13"), 
+                   Gender = c('M',"F","F","M","F",'F','M'),
+                   stringsAsFactors = FALSE)
+
+df <- myfamily
+df$next_birthday <- as.Date(paste0(df$Birthday, '-',year),'%m-%d-%Y')
+df$next_birthday[df$next_birthday < Sys.Date()] <- as.Date(
+  paste0(df$Birthday[df$next_birthday < Sys.Date()], '-', year+1),'%m-%d-%Y')
+df$days_to_bday <- as.numeric(df$next_birthday - Sys.Date())
+df$nodesize <- 365 - df$days_to_bday
+df$target <- 0
+df$source <- (1:length(df$Name))-1
+df1 <- df
+
+wifes_family <-data.frame(Name = c("Kathleen","Jude","Iris", 'Vicki','Lee'),
+                          Birthday= c("09-15","02-02","11-08",'09-29',"09-04"),
+                          Gender = c("F","M","F",'F','M'),stringsAsFactors = FALSE)
+df <- wifes_family
+df$next_birthday <- as.Date(paste0(df$Birthday, '-',year),'%m-%d-%Y')
+df$next_birthday[df$next_birthday < Sys.Date()] <- as.Date(
+  paste0(df$Birthday[df$next_birthday < Sys.Date()], '-', year+1),'%m-%d-%Y')
+df$days_to_bday <- as.numeric(df$next_birthday - Sys.Date())
+df$nodesize <- 365 - df$days_to_bday
+df$target <- 1
+df$source <- c(2,3,4,7,8)
+df2 <- df
+
+df <- rbind(df1,df2)
+df_links <- df
+df_nodes <- unique(df[,c('Name','Birthday','Gender','nodesize','next_birthday','days_to_bday')])
+next_bday <- df_nodes[df_nodes$days_to_bday==min(df_nodes$days_to_bday),]
+next_name <- paste(next_bday$Name, collapse = ' and ')
+next_date <- format(unique(next_bday$next_birthday),'%B %d')
+next_days <- unique(next_bday$days_to_bday)
+```
+
+The next birthday is for `r next_name` on `r next_date` in `r next_days` days.  Other upcoming birthdays are indicated by the size of the node for each family member.
+
+```{r}
+ColourScale <- 'd3.scaleOrdinal()
+            .domain(["M", "F"])
+           .range(["#6ca0dc", "#f8b9d4"]);'
+
+forceNetwork(Links = df_links, 
+             Nodes = df_nodes, NodeID = "Name", Nodesize = 'nodesize',
+             Source = "source", Target = "target", Group = "Gender", 
+             opacity = .8, opacityNoHover = 1, fontSize = 12, charge = -150,
+             zoom = TRUE, colourScale = JS(ColourScale), legend = TRUE)
+```

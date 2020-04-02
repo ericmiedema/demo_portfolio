@@ -1,0 +1,16 @@
+name: "Data Science Work"
+navbar:
+  title: "Projects"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: Projects
+      menu:
+        - text: "My family"
+          href: page1.html
+        - text: "Yahtzee"
+          href: page2.html
+    - text: Links
+      menu:
+        - text: "R for Data Science"
+          href: https://r4ds.had.co.nz/

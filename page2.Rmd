@@ -1,0 +1,80 @@
+---
+output: html_document
+---
+
+## Yahtzee or Large straight?
+
+This demo is a common scenerio in the game Yahtzee and highlights how to simulate outcomes to inform a decision.  It is your last turn in the Yahtzee game and you need to determine if you want to go for Yahtzee to score 50 points or go for large straight to score 40 points.  Based you your first role of 5 dice (which will alway be random), what should you do next?
+
+```{r}
+library(knitr)
+library(tidyr)
+library(dplyr)
+library(scales)
+library(ggplot2)
+rolls<-1000 #Number of rolls
+dice <- c('D1','D2','D3','D4','D5')
+first_roll <- sample(1:6, 5, replace = TRUE)
+df<-data.frame(Roll = rep(1:rolls, times = 5), 
+               Die = rep(dice, each = rolls),
+               value = rep(first_roll, each = rolls), stringsAsFactors = FALSE)
+
+go_for_yahtzee <- function(df){
+  df_s<-df %>% group_by(Roll, value) %>% summarize(Die_Count = length(value)) %>% 
+    group_by(Roll) %>% mutate(Keep = max(Die_Count)) %>% filter(Keep == Die_Count) %>% 
+    arrange(Roll,desc(value)) %>% mutate(Decision = 1:length(Roll)) %>% filter(Decision == 1) %>%
+    mutate(Keep = value) %>% select(Roll, Keep)
+  df<- inner_join(df, df_s, by = "Roll")
+  df$New_value <- sample(1:6,rolls*5,replace = TRUE)
+  df$value[df$value != df$Keep] <- df$New_value[df$value != df$Keep]
+  df <- df %>% select(Roll, Die, value)
+  df
+}
+
+go_for_large_straight <- function(df){
+  df$value[df$value == 6]<-1
+  df<-df %>% group_by(Roll, value) %>% mutate(Die_Seq = 1:length(value))
+  df$New_value <- sample(1:6,rolls*5,replace = TRUE)
+  df$New_value[df$New_value == 6] <- 1
+  df$value[df$Die_Seq != 1] <- df$New_value[df$Die_Seq != 1]
+  df <- df %>% select(Roll, Die, value)
+  df
+}
+
+list_yahtzees <- function(df){
+  df_s <- df %>% group_by(Roll, value) %>% summarize(Die_Count = length(value))
+  df_s$Roll[df_s$Die_Count==5]
+}
+
+list_large_straights <- function(df){
+  df$value[df$value == 6]<-1
+  df_s<-df %>% group_by(Roll) %>% summarize(Unique_Count = length(unique(value)))
+  df_s$Roll[df_s$Unique_Count==5]
+}
+```
+
+```{r}
+df_yahtzee <- go_for_yahtzee(df)
+df_yahtzee <- go_for_yahtzee(df_yahtzee)
+yahtzees <- list_yahtzees(df_yahtzee)
+
+df_ls <- go_for_large_straight(df)
+df_ls <- go_for_large_straight(df_ls)
+large_straights <- list_large_straights(df_ls)
+
+df <- df %>% group_by(Roll) %>% summarize(Unique_Die = length(unique(value)))
+df$Yahtzee <- df$Roll %in% yahtzees
+df$Large_Straight <- df$Roll %in% large_straights
+
+odds_yahtzee <- mean(df$Yahtzee)
+odds_ls <- mean(df$Large_Straight)
+exp_yahtzee <- round(odds_yahtzee*50,2)
+exp_ls <- round(odds_ls*40,2)
+
+if(odds_yahtzee*50 >= odds_ls*40){
+  strategy <- 'yahtzee'} else {
+    strategy <- 'large straight'
+  }
+```
+
+Based on a role of `r first_roll` you will have a `r percent(odds_ls)` chance of large straight with an expected score of `r exp_ls` compared to a `r percent(odds_yahtzee)` chance of Yahtzee with an expected score of `r exp_yahtzee`.  Therefore you should go for `r strategy`!

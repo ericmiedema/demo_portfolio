@@ -1,0 +1,5 @@
+---
+title: "Project Ideas"
+---
+
+This site is to organize projects and examples from data science class.
